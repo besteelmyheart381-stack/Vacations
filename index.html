@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vacations">
+<meta name="theme-color" content="#0A4F8F">
+<meta name="description" content="Warren Family Travel Planner">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Vacation Planner</title>
+<style>
+:root {
+  --primary: #0A4F8F;
+  --primary-dark: #073a6b;
+  --primary-light: #1a7abf;
+  --accent: #F4A637;
+  --accent-dark: #d4891e;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --bg: #EEF4FB;
+  --card: #ffffff;
+  --text: #1a2a3a;
+  --text-muted: #6b7f94;
+  --border: #dde8f2;
+  --header-h: 56px;
+  --safe-top: env(safe-area-inset-top, 44px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tab-h: 60px;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(10,79,143,0.10);
+  --shadow-lg: 0 8px 32px rgba(10,79,143,0.16);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; background: #0A4F8F; }
+body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif; background: #0A4F8F; }
+
+#app {
+  position: fixed; inset: 0;
+  max-width: 430px; margin: 0 auto;
+  background: var(--bg);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  will-change: transform;
+  overflow: hidden;
+}
+.screen.active { transform: translateX(0); }
+.screen.behind { transform: translateX(-28%); }
+
+/* ===== HEADER ===== */
+.header {
+  flex-shrink: 0;
+  padding-top: var(--safe-top);
+  background: var(--primary);
+  color: #fff;
+  z-index: 10;
+}
+.header-inner {
+  height: var(--header-h);
+  display: flex; align-items: center;
+  padding: 0 14px; gap: 8px;
+}
+.header-title { font-size: 17px; font-weight: 700; flex: 1; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-subtitle { font-size: 11px; opacity: 0.72; margin-top: 1px; }
+.header-title-group { flex: 1; min-width: 0; }
+
+.btn-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.15);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; font-size: 16px;
+  -webkit-appearance: none;
+}
+.btn-icon:active { background: rgba(255,255,255,0.28); }
+.btn-icon.dark {
+  background: rgba(10,79,143,0.08);
+  color: var(--primary);
+}
+.btn-icon.dark:active { background: rgba(10,79,143,0.16); }
+
+/* ===== MENU STACK ===== */
+.menu-close-overlay {
+  position: fixed; inset: 0; z-index: 190; display: none;
+}
+.menu-close-overlay.open { display: block; background: rgba(0,0,0,0.32); }
+
+.menu-popover {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--header-h) + 6px);
+  right: 12px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.24), 0 2px 8px rgba(0,0,0,0.10);
+  z-index: 200;
+  min-width: 210px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+  display: none;
+  transform-origin: top right;
+  animation: menuPop 0.18s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+.menu-popover.open { display: block; }
+@keyframes menuPop {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.menu-popover-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  font-size: 15px; font-weight: 600; color: var(--text);
+  cursor: pointer; border-bottom: 1px solid var(--border);
+}
+.menu-popover-item:last-child { border-bottom: none; }
+.menu-popover-item:active { background: var(--bg); }
+.menu-popover-item.current { color: var(--primary); }
+.menu-popover-item.danger { color: var(--danger); }
+.menu-icon { width: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--primary); }
+.menu-icon svg { width: 18px; height: 18px; }
+
+/* ===== SCROLL CONTENT ===== */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px);
+}
+.scroll-content.no-tab { padding-bottom: calc(var(--safe-bottom) + 16px); }
+
+/* ===== BOTTOM TAB BAR ===== */
+.tab-bar {
+  flex-shrink: 0;
+  height: calc(var(--tab-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: stretch;
+  z-index: 20;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; cursor: pointer;
+  border: none; background: none; color: var(--text-muted);
+  font-size: 10px; font-weight: 500; padding: 6px 0;
+  -webkit-appearance: none;
+}
+.tab-item.active { color: var(--primary); }
+.tab-item svg { width: 24px; height: 24px; }
+.btn-icon svg { width: 20px; height: 20px; }
+
+/* ===== INNER TRIP TABS ===== */
+.trip-tabs {
+  display: flex; background: var(--primary);
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.trip-tab {
+  flex: 1; padding: 10px 4px; font-size: 11px; font-weight: 600;
+  color: rgba(255,255,255,0.55); border: none; background: none;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  letter-spacing: 0.3px; text-transform: uppercase;
+  -webkit-appearance: none;
+}
+.trip-tab.active { color: #fff; border-bottom-color: var(--accent); }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin: 12px 16px 0;
+  overflow: hidden;
+}
+.card-header {
+  padding: 14px 16px 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.card-title { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+.card-body { padding: 0 16px 14px; }
+
+/* ===== TRIP CARD ===== */
+.trip-card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin: 8px 16px 0;
+  overflow: hidden; cursor: pointer; position: relative;
+  display: flex; align-items: center; gap: 13px;
+  padding: 13px 14px;
+  border-left: 4px solid var(--tc-main, var(--primary));
+  transition: transform 0.1s, opacity 0.1s;
+}
+.trip-card:active { opacity: 0.92; transform: scale(0.99); }
+.trip-card-suitcase {
+  width: 52px; height: 52px; border-radius: 13px;
+  background: var(--tc-bg, #E3EEFA);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; flex-shrink: 0;
+}
+.trip-card-content { flex: 1; min-width: 0; }
+.trip-card-name {
+  font-size: 15px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trip-card-dest {
+  font-size: 12px; color: var(--text-muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trip-card-row {
+  display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap;
+}
+.trip-card-dates {
+  font-size: 12px; color: var(--tc-main, var(--primary)); font-weight: 700;
+}
+.trip-card-edit-btn {
+  margin-top: 8px; margin-left: auto;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.1px;
+  color: var(--tc-main, var(--primary));
+  background: var(--tc-bg, #E3EEFA);
+  border: none; border-radius: 20px;
+  padding: 4px 10px; cursor: pointer; -webkit-appearance: none;
+}
+.trip-card-edit-btn svg { width: 12px; height: 12px; }
+
+/* Badge */
+.badge {
+  padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.badge-blue { background: #E3EEFA; color: var(--primary); }
+.badge-green { background: #E6F9EE; color: var(--success); }
+.badge-orange { background: #FFF3E0; color: var(--accent-dark); }
+.badge-red { background: #FEE8E6; color: var(--danger); }
+.badge-gray { background: #F0F4F8; color: var(--text-muted); }
+
+/* ===== SECTION HEADERS ===== */
+.section-header {
+  padding: 16px 16px 6px;
+  font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+
+/* ===== DAY ROW ===== */
+.day-row {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 13px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+}
+.day-row:active { background: #F6FAFF; }
+.day-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--primary-light); flex-shrink: 0;
+}
+.day-row-info { flex: 1; }
+.day-row-label { font-size: 14px; font-weight: 700; color: var(--text); }
+.day-row-date { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.day-row-location { font-size: 13px; color: var(--primary); margin-top: 2px; font-weight: 500; display:flex;align-items:center;gap:3px; }
+.day-row-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.chevron { color: var(--border); font-size: 18px; }
+
+/* ===== MEAL CARD ===== */
+.meal-section { border-bottom: 1px solid var(--border); }
+.meal-section:last-child { border-bottom: none; }
+.meal-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; cursor: pointer;
+}
+.meal-row:active { background: #F6FAFF; }
+.meal-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  flex-shrink: 0;
+}
+.meal-info { flex: 1; }
+.meal-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.meal-restaurant { font-size: 14px; color: var(--text); margin-top: 1px; }
+.meal-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== ACTIVITY CARD ===== */
+.activity-item {
+  padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: #E3EEFA;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  flex-shrink: 0; margin-top: 1px;
+}
+.activity-info { flex: 1; }
+.activity-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.activity-time { font-size: 12px; color: var(--primary); font-weight: 600; margin-top: 2px; }
+.activity-location { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.activity-booking { font-size: 12px; color: var(--success); margin-top: 2px; font-weight: 600; }
+.activity-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* ===== CLOTHES TAB ===== */
+.person-tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); }
+.person-tab {
+  flex: 1; padding: 10px 4px; font-size: 13px; font-weight: 600;
+  color: var(--text-muted); border: none; background: none;
+  border-bottom: 2px solid transparent; cursor: pointer;
+  -webkit-appearance: none;
+}
+.person-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.clothes-day-picker-wrap {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.clothes-day-picker {
+  display: flex; overflow-x: auto; gap: 8px;
+  padding: 10px 16px 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) var(--border);
+  padding-bottom: 8px;
+}
+.clothes-day-picker::-webkit-scrollbar { height: 4px; }
+.clothes-day-picker::-webkit-scrollbar-track { background: var(--border); border-radius: 2px; margin: 0 16px; }
+.clothes-day-picker::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
+.clothes-day-picker-wrap::after {
+  content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 28px;
+  background: linear-gradient(to left, var(--card), transparent);
+  pointer-events: none;
+}
+
+.day-chip {
+  flex-shrink: 0; padding: 7px 12px; border-radius: 20px;
+  background: var(--bg); color: var(--text-muted);
+  font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border);
+  white-space: nowrap; text-align: center; line-height: 1.4;
+}
+.day-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.clothes-field {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin: 12px 16px 0; overflow: hidden;
+}
+.clothes-field-label {
+  padding: 10px 14px 0; font-size: 11px; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+}
+.clothes-field textarea {
+  width: 100%; border: none; outline: none; resize: none;
+  font-family: inherit; font-size: 14px; color: var(--text);
+  padding: 8px 14px 12px; background: transparent; min-height: 64px;
+}
+
+/* ===== PACKING LIST ===== */
+.packing-filter { display: flex; overflow-x: auto; gap: 8px; padding: 12px 16px; scrollbar-width: none; }
+.packing-filter::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--bg); color: var(--text-muted);
+  -webkit-appearance: none;
+}
+.filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.packing-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  background: var(--card); cursor: pointer;
+}
+.packing-item:active { background: #F6FAFF; }
+.packing-item.packed { opacity: 0.5; }
+.packing-check {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 14px;
+}
+.packing-check.checked { background: var(--success); border-color: var(--success); }
+.packing-item-name { flex: 1; font-size: 14px; color: var(--text); }
+.packing-item-person { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.packing-progress {
+  background: var(--card); margin: 12px 16px 0;
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px;
+}
+.progress-bar-bg { height: 8px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); border-radius: 4px; transition: width 0.3s; }
+
+/* ===== INFO TAB ===== */
+.info-row { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.info-row:last-child { border-bottom: none; }
+.info-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.info-value { font-size: 14px; color: var(--text); }
+.info-value a { color: var(--primary); text-decoration: none; }
+
+/* ===== ARCHIVE ===== */
+.archive-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  cursor: pointer; background: var(--card);
+}
+.archive-item:last-child { border-bottom: none; }
+.archive-item:active { background: #F6FAFF; }
+.archive-year-badge {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 800; flex-shrink: 0;
+  text-align: center; line-height: 1.2;
+}
+.archive-dest { flex: 1; font-size: 14px; color: var(--text); font-weight: 500; }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 100; display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 430px;
+  max-height: 92vh; display: flex; flex-direction: column;
+  padding-bottom: var(--safe-bottom);
+}
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+.modal-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.modal-title { font-size: 17px; font-weight: 700; color: var(--text); flex: 1; }
+.modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+
+/* ===== FORMS ===== */
+.form-group { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.form-section-label {
+  padding: 14px 16px 4px; font-size: 13px; font-weight: 800; color: var(--primary);
+  text-transform: uppercase; letter-spacing: 0.6px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.form-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-input { flex: 1; }
+.form-input {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--bg); outline: none; -webkit-appearance: none;
+}
+.form-input:focus { border-color: var(--primary); background: #fff; }
+.form-textarea {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--bg); outline: none; resize: none; min-height: 80px; -webkit-appearance: none;
+}
+.form-textarea:focus { border-color: var(--primary); background: #fff; }
+.form-select {
+  width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--bg); outline: none; -webkit-appearance: none;
+}
+.form-select:focus { border-color: var(--primary); }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 20px; border-radius: 12px; font-family: inherit;
+  font-size: 15px; font-weight: 700; border: none; cursor: pointer;
+  -webkit-appearance: none; letter-spacing: -0.2px;
+}
+.btn:active { opacity: 0.85; transform: scale(0.98); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-ghost { background: transparent; color: var(--primary); }
+.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+.btn-full { width: 100%; }
+.btn-sm { padding: 7px 14px; font-size: 13px; border-radius: 8px; }
+.btn-row { display: flex; gap: 10px; padding: 14px 16px; }
+.btn-row .btn { flex: 1; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 32px; text-align: center; gap: 12px; }
+.empty-icon { font-size: 56px; }
+.empty-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.empty-sub { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+/* ===== HOME HERO ===== */
+.home-hero {
+  background: linear-gradient(160deg, var(--primary-dark), var(--primary-light));
+  padding-top: var(--safe-top);
+  color: #fff; flex-shrink: 0;
+}
+.home-hero-inner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 14px 20px;
+}
+.home-hero-title { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+.home-hero-sub { font-size: 13px; opacity: 0.75; margin-top: 3px; }
+.home-hero-text { flex: 1; }
+
+/* ===== COUNTDOWN ===== */
+.countdown-card {
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+  border-radius: var(--radius); margin: 12px 16px 0;
+  padding: 14px 16px; color: #fff; box-shadow: var(--shadow-lg);
+}
+.countdown-label { font-size: 11px; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.6px; }
+.countdown-number { font-size: 44px; font-weight: 900; letter-spacing: -2px; line-height: 1; }
+.countdown-unit { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+.countdown-trip { font-size: 14px; font-weight: 700; margin-top: 6px; }
+
+/* ===== TOGGLE ===== */
+.toggle {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: var(--border); position: relative; cursor: pointer;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--success); }
+.toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(18px); }
+
+/* ===== MISC ===== */
+.divider { height: 1px; background: var(--border); margin: 0 16px; }
+.spacer { height: 16px; }
+#toast {
+  position: fixed; top: calc(var(--safe-top) + 60px); left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: #1a2a3a; color: #fff; border-radius: 20px;
+  padding: 10px 20px; font-size: 14px; font-weight: 600;
+  z-index: 999; opacity: 0; transition: all 0.25s; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.25s ease forwards; }
+
+/* ===== INSTALL BANNER ===== */
+#install-banner {
+  position: fixed; bottom: calc(var(--tab-h) + var(--safe-bottom) + 12px); left: 16px; right: 16px;
+  background: var(--primary); color: #fff; border-radius: 14px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--shadow-lg); z-index: 50;
+  animation: fadeIn 0.3s ease;
+}
+#install-banner.hidden { display: none; }
+#install-banner-text { flex: 1; font-size: 13px; font-weight: 600; line-height: 1.4; }
+#install-banner-btn { background: #fff; color: var(--primary); border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+#install-banner-close { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 20px; cursor: pointer; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="install-banner" class="hidden">
+  <div id="install-banner-text">📱 Add to Home Screen for the best experience!</div>
+  <button id="install-banner-btn">Install</button>
+  <button id="install-banner-close">✕</button>
+</div>
+
+<script>
+// ============================================================
+// SERVICE WORKER REGISTRATION
+// ============================================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+// ============================================================
+// PWA INSTALL PROMPT
+// ============================================================
+let deferredPrompt = null;
+const installBanner = document.getElementById('install-banner');
+const installBtn = document.getElementById('install-banner-btn');
+const installClose = document.getElementById('install-banner-close');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.classList.remove('hidden');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBanner.classList.add('hidden');
+});
+
+installClose.addEventListener('click', () => {
+  installBanner.classList.add('hidden');
+});
+
+window.addEventListener('appinstalled', () => {
+  installBanner.classList.add('hidden');
+  deferredPrompt = null;
+});
+
+// ============================================================
+// TRIP COLOR PALETTE
+// ============================================================
+const PALETTE = [
+  { main:'#1565C0', bg:'#DCEEFB' },
+  { main:'#2E7D32', bg:'#D7F0DC' },
+  { main:'#6A1B9A', bg:'#EFE0FC' },
+  { main:'#E65100', bg:'#FDE9D6' },
+  { main:'#AD1457', bg:'#FCE0EC' },
+  { main:'#00695C', bg:'#D4EEE9' },
+  { main:'#F57F17', bg:'#FFF5D4' },
+  { main:'#283593', bg:'#DDE1F7' },
+];
+function tripColor(idx) { return PALETTE[idx % PALETTE.length]; }
+
+// ============================================================
+// DATA LAYER
+// ============================================================
+const DB_KEY = 'vacationApp_v4';
+
+function genId() { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function formatDate(d) {
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+function formatDateShort(d) {
+  const dt = new Date(d + 'T12:00:00');
+  return dt.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+function daysUntil(dateStr) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const target = new Date(dateStr + 'T12:00:00'); target.setHours(0,0,0,0);
+  return Math.round((target - now) / 86400000);
+}
+function genDays(startDate, endDate, travelers) {
+  const trvl = travelers && travelers.length ? travelers : S.data.travelers;
+  const days = []; const start = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00'); const cur = new Date(start); let idx = 0;
+  while (cur <= end) {
+    const ds = cur.toISOString().slice(0,10);
+    const clothes = trvl.reduce((o,p) => { o[p]=''; return o; }, {});
+    days.push({
+      id:'day-'+ds, date:ds, location:'',
+      dayLabel: idx === 0 ? 'Day 1' : 'Day '+(idx+1),
+      meals:{
+        breakfast:{ restaurant:'', reservationInfo:'', notes:'', booked:false },
+        lunch:    { restaurant:'', reservationInfo:'', notes:'', booked:false },
+        dinner:   { restaurant:'', reservationInfo:'', notes:'', booked:false }
+      },
+      activities:[], clothes, notes:''
+    });
+    cur.setDate(cur.getDate()+1); idx++;
+  }
+  return days;
+}
+
+// ============================================================
+// DEFAULT DATA
+// ============================================================
+function buildDefaultData() {
+  const caribbeanDays = [
+    { id:'day-2026-05-15', date:'2026-05-15', location:'San Juan, Puerto Rico', dayLabel:'Arrival Day',
+      meals:{ breakfast:{restaurant:'',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'Hotel Rumbao',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a1',name:'Depart Dulles (UA2021)',time:'8:34 am – 12:34 pm',location:'Dulles International Airport',reservationInfo:'Flight UA2021 – United Airlines',bookedWith:'United Airlines',notes:'',status:'Booked'},
+        {id:'a2',name:'Check In – Hotel Rumbao',time:'Afternoon',location:'100 Brumbaugh St, San Juan, PR 00901',reservationInfo:'Can cancel before May 13, 2026',bookedWith:'Marriott',notes:'',status:'Booked'},
+        {id:'a3',name:'Rum Tasting Tour – Casa BACARDÍ',time:'5:30 pm (1 hr 15 min)',location:'Casa BACARDÍ, San Juan',reservationInfo:'Booking Conf# 1743847659',bookedWith:'Viator',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-16', date:'2026-05-16', location:'San Juan, Puerto Rico (Embarkation)', dayLabel:'Day 1 — Embarkation',
+      meals:{ breakfast:{restaurant:'Hotel Rumbao',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a4',name:'Board Ship – Royal Caribbean',time:'Midday',location:'San Juan Cruise Port',reservationInfo:'Grand Suite – Cabin 8008',bookedWith:'Royal Caribbean',notes:'',status:'Confirmed'},
+        {id:'a5',name:'Ship Departs San Juan',time:'6:00 pm',location:'San Juan Port',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-17', date:'2026-05-17', location:'Charlotte Amalie, St. Thomas', dayLabel:'Day 2 — St. Thomas',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a6',name:'In Port',time:'8:00 am – 5:00 pm',location:'Charlotte Amalie, St. Thomas',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a7',name:'Escape to Water Island',time:'10:00 am (4 hours)',location:'Water Island, St. Thomas',reservationInfo:'',bookedWith:'',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-18', date:'2026-05-18', location:'St. Croix, U.S.V.I.', dayLabel:'Day 3 — St. Croix',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a8',name:'In Port',time:'8:00 am – 5:00 pm',location:'St. Croix, USVI',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a9',name:'Paradise Beach Day Pass',time:'9:00 am (4 hours)',location:'St. Croix',reservationInfo:'',bookedWith:'',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-19', date:'2026-05-19', location:'Phillipsburg, St. Maarten', dayLabel:'Day 4 — St. Maarten',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a10',name:'In Port',time:'8:00 am – 5:00 pm',location:'Phillipsburg, St. Maarten',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a11',name:"America's Cup Sailing Regatta",time:'11:30 am (2.5 hours)',location:'St. Maarten',reservationInfo:'',bookedWith:'',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-20', date:'2026-05-20', location:"St. John's, Antigua", dayLabel:"Day 5 — Antigua",
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a12',name:'In Port',time:'8:00 am – 5:00 pm',location:"St. John's, Antigua",reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a13',name:'Beach Break',time:'9:00 am (5.5 hours)',location:'Antigua',reservationInfo:'',bookedWith:'',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-21', date:'2026-05-21', location:'Roseau, Dominica', dayLabel:'Day 6 — Dominica',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a14',name:'In Port',time:'8:00 am – 5:00 pm',location:'Roseau, Dominica',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a15',name:'River Tubing, Rainforest & Waterfall',time:'10:30 am (4.5 hours)',location:'Dominica',reservationInfo:'',bookedWith:'',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-22', date:'2026-05-22', location:'At Sea', dayLabel:'Day 7 — At Sea',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false} },
+      activities:[], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'Relaxing day at sea' },
+    { id:'day-2026-05-23', date:'2026-05-23', location:'San Juan, Puerto Rico (Disembark)', dayLabel:'Day 8 — San Juan Return',
+      meals:{ breakfast:{restaurant:'On Ship',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a16',name:'Arrive at Port',time:'6:00 am',location:'San Juan, Puerto Rico',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a17',name:'Disembark Ship',time:'Morning',location:'San Juan Cruise Port',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a18',name:'Check In – Hotel Rumbao',time:'Afternoon',location:'100 Brumbaugh St, San Juan, PR 00901',reservationInfo:'Cancel before May 21, 2026',bookedWith:'Marriott',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' },
+    { id:'day-2026-05-24', date:'2026-05-24', location:'San Juan → Dulles (Return)', dayLabel:'Return Day',
+      meals:{ breakfast:{restaurant:'Hotel Rumbao',reservationInfo:'',notes:'',booked:false}, lunch:{restaurant:'',reservationInfo:'',notes:'',booked:false}, dinner:{restaurant:'',reservationInfo:'',notes:'',booked:false} },
+      activities:[
+        {id:'a19',name:'Leave for Airport',time:'Early Morning',location:'Luis Muñoz Marín Intl Airport',reservationInfo:'',bookedWith:'',notes:'',status:'Confirmed'},
+        {id:'a20',name:'Depart San Juan (UA2022)',time:'7:20 am – 11:21 am',location:'Luis Muñoz Marín Intl Airport',reservationInfo:'Flight UA2022 – United Airlines',bookedWith:'United Airlines',notes:'',status:'Booked'}
+      ], clothes:{Michael:'',Tina:'',Ryan:''}, notes:'' }
+  ];
+
+  const packingList = [
+    {id:'pk1',item:'Passports',person:'All',packed:false},
+    {id:'pk2',item:'Travel Documents',person:'All',packed:false},
+    {id:'pk3',item:'Phone Charger',person:'All',packed:false},
+    {id:'pk4',item:'Apple Watch + Charger',person:'Michael',packed:false},
+    {id:'pk5',item:'iPad + Charger',person:'Ryan',packed:false},
+    {id:'pk6',item:'Pack Ryan Charger with iPad Cable',person:'Ryan',packed:false},
+    {id:'pk7',item:'Make Up',person:'Tina',packed:false},
+    {id:'pk8',item:'Tweezers',person:'Tina',packed:false},
+    {id:'pk9',item:'Bi-Pap',person:'Tina',packed:false},
+    {id:'pk10',item:'Nightguard',person:'Tina',packed:false},
+    {id:'pk11',item:'Retainer',person:'Ryan',packed:false},
+    {id:'pk12',item:'Headband',person:'Tina',packed:false},
+    {id:'pk13',item:'Blow Dryer (round)',person:'Tina',packed:false},
+    {id:'pk14',item:'Flat Iron',person:'Tina',packed:false},
+    {id:'pk15',item:'Hair Style Clip',person:'Tina',packed:false},
+    {id:'pk16',item:'Mirror',person:'Tina',packed:false},
+    {id:'pk17',item:'Shower Cap',person:'Tina',packed:false},
+    {id:'pk18',item:'Jewelry',person:'Tina',packed:false},
+    {id:'pk19',item:'Pomade',person:'Michael',packed:false},
+    {id:'pk20',item:'Shave Cream',person:'Michael',packed:false},
+    {id:'pk21',item:'Face Wash',person:'All',packed:false},
+    {id:'pk22',item:'Q-Tips',person:'All',packed:false},
+    {id:'pk23',item:'Toothbrush',person:'All',packed:false},
+    {id:'pk24',item:'Toothpaste',person:'All',packed:false},
+    {id:'pk25',item:'Floss',person:'All',packed:false},
+    {id:'pk26',item:'Mouthwash',person:'All',packed:false},
+    {id:'pk27',item:'Face Lotion',person:'All',packed:false},
+    {id:'pk28',item:'Shampoo',person:'All',packed:false},
+    {id:'pk29',item:'Conditioner',person:'All',packed:false},
+    {id:'pk30',item:'Razor',person:'All',packed:false},
+    {id:'pk31',item:'PJs',person:'All',packed:false},
+    {id:'pk32',item:'Eye Glass Cleaner',person:'All',packed:false},
+    {id:'pk33',item:'Hand Sanitizer',person:'All',packed:false},
+    {id:'pk34',item:'Brush',person:'All',packed:false},
+    {id:'pk35',item:'Face Sunscreen',person:'All',packed:false},
+    {id:'pk36',item:'Sunscreen',person:'All',packed:false},
+    {id:'pk37',item:'Deodorant',person:'All',packed:false},
+    {id:'pk38',item:'Perfume / Cologne',person:'All',packed:false},
+    {id:'pk39',item:'Body Lotion',person:'All',packed:false},
+    {id:'pk40',item:'Hair Spray',person:'Tina',packed:false},
+    {id:'pk41',item:'Styling Product',person:'Tina',packed:false},
+    {id:'pk42',item:'Medicine',person:'All',packed:false},
+    {id:'pk43',item:'Luggage Scale',person:'All',packed:false},
+    {id:'pk44',item:'Raincoats',person:'All',packed:false},
+    {id:'pk45',item:'Umbrellas',person:'All',packed:false},
+    {id:'pk46',item:'Sunglasses',person:'All',packed:false},
+    {id:'pk47',item:'Adapters for Outlets',person:'All',packed:false},
+    {id:'pk48',item:'Bandaids',person:'All',packed:false},
+    {id:'pk49',item:'Vacuum Pumps',person:'All',packed:false}
+  ];
+
+  return {
+    version: 4,
+    travelers: ['Michael', 'Tina', 'Ryan'],
+    trips: [{
+      id:'trip-caribbean-2026',
+      name:'Southern Caribbean Cruise',
+      destination:'Puerto Rico · St. Thomas · St. Croix · St. Maarten · Antigua · Dominica',
+      startDate:'2026-05-15', endDate:'2026-05-24', status:'upcoming',
+      reservationNumber:'5734280 – Grand Suite Cabin 8008',
+      reservationLink:'https://www.royalcaribbean.com/reservation/dashboard',
+      ship:'Royal Caribbean',
+      deposit:750, depositDate:'2025-06-29',
+      finalPayment:6115.65, finalPaymentDue:'2026-02-15',
+      notes:'',
+      travelers: ['Michael', 'Tina', 'Ryan'],
+      departFlight:{ date:'2026-05-15', time:'8:34 AM', airline:'United Airlines', flightNumber:'UA2021' },
+      returnFlight:{ date:'2026-05-24', time:'7:20 AM', airline:'United Airlines', flightNumber:'UA2022' },
+      days: caribbeanDays,
+      packingList: packingList
+    }],
+    archive:[
+      {id:'arch1',year:2017,destination:'Hawaii',notes:''},
+      {id:'arch2',year:2018,destination:'Myrtle Beach',notes:''},
+      {id:'arch3',year:2019,destination:'Caribbean Cruise – Jamaica, Mexico, Cayman Islands',notes:''},
+      {id:'arch4',year:2020,destination:'Virginia Beach',notes:''},
+      {id:'arch5',year:2021,destination:'San Francisco & Alaska',notes:''},
+      {id:'arch6',year:2022,destination:'European Tapestry – Netherlands, Germany, Austria, Liechtenstein, Switzerland, Italy, Vatican City, Monaco, France',notes:''},
+      {id:'arch7',year:2023,destination:'Northern Capitals – Denmark, Norway, Sweden, Finland, Estonia, Poland',notes:''},
+      {id:'arch8',year:2024,destination:'Iberian Discovery – Spain, Portugal & Morocco',notes:''},
+      {id:'arch9',year:2025,destination:'Imperial Splendors – Germany, Czech Republic, Slovakia, Hungary, Austria',notes:''},
+      {id:'arch10',year:2025,destination:'Iceland',notes:''}
+    ]
+  };
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let S = {
+  data:null, screen:'home', stack:[], tripId:null, tripTab:0,
+  dayId:null, clothesPerson:0, clothesDayIdx:0, packFilter:'All',
+  homeTab:0, modal:null, modalData:{}, menuOpen:false
+};
+
+function save() { localStorage.setItem(DB_KEY, JSON.stringify(S.data)); }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d.version >= 3) {
+        d.trips.forEach(t => {
+          if (!t.departFlight) t.departFlight = { date:'', time:'', airline:'', flightNumber:'' };
+          if (!t.returnFlight) t.returnFlight = { date:'', time:'', airline:'', flightNumber:'' };
+          if (!t.travelers || !t.travelers.length) t.travelers = [...d.travelers];
+        });
+        d.version = 4;
+        return d;
+      }
+    }
+  } catch(e) {}
+  return buildDefaultData();
+}
+
+function trip() { return S.data.trips.find(t => t.id === S.tripId); }
+function day()  { const t = trip(); return t ? t.days.find(d => d.id === S.dayId) : null; }
+
+function navigate(screen, params={}) {
+  S.menuOpen = false;
+  S.stack.push({ screen:S.screen, tripId:S.tripId, tripTab:S.tripTab, dayId:S.dayId,
+    clothesPerson:S.clothesPerson, clothesDayIdx:S.clothesDayIdx, packFilter:S.packFilter, homeTab:S.homeTab });
+  Object.assign(S, { screen }, params);
+  render();
+}
+
+function back() {
+  if (S.modal) { closeModal(); return; }
+  S.menuOpen = false;
+  if (S.stack.length) { const prev = S.stack.pop(); Object.assign(S, prev); render(); }
+}
+
+function openModal(name, data={}) {
+  S.modal = name; S.modalData = data; S.menuOpen = false;
+  const el = document.getElementById('modal-'+name);
+  if (el) { renderModal(name); el.classList.add('open'); attachEvents(); }
+}
+
+function closeModal() {
+  if (S.modal) {
+    const el = document.getElementById('modal-'+S.modal);
+    if (el) el.classList.remove('open');
+    S.modal = null; S.modalData = {};
+    render();
+  }
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ============================================================
+// SVG ICONS
+// ============================================================
+const icons = {
+  home:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`,
+  archive:  `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></svg>`,
+  plus:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
+  back:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>`,
+  edit:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+  trash:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+  check:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>`,
+  close:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>`,
+  chevron:  `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6-6-6z"/></svg>`,
+  map:      `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>`,
+  plane:    `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+  ship:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.64 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.59-.49L19 10.62V6c0-1.1-.9-2-2-2h-3V1H10v3H7c-1.1 0-2 .9-2 2v4.62l-1.29.42c-.25.07-.47.25-.59.49s-.14.52-.06.78L3.95 19zM7 6h10v3.97L12 8 7 9.97V6z"/></svg>`,
+  menu:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>`,
+  link:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>`,
+  save:     `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm2 16H5V5h11.17L19 7.83V19zm-7-7a3 3 0 100 6 3 3 0 000-6zm-5-5h8v4H7V7z"/></svg>`,
+  export:   `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>`,
+  import:   `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>`
+};
+
+// ============================================================
+// MENU
+// ============================================================
+function buildMenuHtml() {
+  const onTrip = (S.screen === 'trip' || S.screen === 'day');
+  const onHome = (S.screen === 'home' || S.screen === 'archive');
+  let items = '';
+  items += `<div class="menu-popover-item ${onHome?'current':''}" data-action="menu-dashboard">
+    <span class="menu-icon">${icons.home}</span> Dashboard</div>`;
+  if (onTrip) {
+    items += `<div class="menu-popover-item" data-action="menu-edit">
+      <span class="menu-icon">${icons.edit}</span> Edit Trip</div>`;
+  }
+  items += `<div class="menu-popover-item" data-action="menu-save">
+    <span class="menu-icon">${icons.save}</span> Save</div>`;
+  items += `<div class="menu-popover-item" data-action="menu-new-trip">
+    <span class="menu-icon">${icons.plus}</span> New Trip</div>`;
+  items += `<div class="menu-popover-item" data-action="menu-export">
+    <span class="menu-icon">${icons.export}</span> Export Data</div>`;
+  items += `<div class="menu-popover-item" data-action="menu-import">
+    <span class="menu-icon">${icons.import}</span> Import Data</div>`;
+  return items;
+}
+
+// ============================================================
+// RENDER ENGINE
+// ============================================================
+function render() {
+  const app = document.getElementById('app');
+  const screens = {
+    'home': renderHome, 'trip': renderTrip, 'day': renderDay,
+    'archive': renderArchive, 'new-trip': renderNewTrip, 'edit-trip': renderEditTrip
+  };
+
+  let html = '';
+  Object.keys(screens).forEach(key => {
+    const isActive = S.screen === key;
+    const isBehind = S.stack.length && S.stack[S.stack.length-1].screen === key && !isActive;
+    const cls = isActive ? 'screen active' : (isBehind ? 'screen behind' : 'screen');
+    html += `<div id="scr-${key}" class="${cls}">${(isActive||isBehind) ? screens[key]() : ''}</div>`;
+  });
+
+  html += renderModals();
+  html += `<div class="menu-close-overlay ${S.menuOpen?'open':''}" data-action="close-menu"></div>`;
+  html += `<div class="menu-popover ${S.menuOpen?'open':''}">${buildMenuHtml()}</div>`;
+
+  app.innerHTML = html;
+  attachEvents();
+}
+
+// ============================================================
+// HOME SCREEN
+// ============================================================
+function renderHome() {
+  const upcoming = S.data.trips.filter(t => t.status === 'upcoming').sort((a,b) => a.startDate.localeCompare(b.startDate));
+  let nextTrip = null; let minDays = Infinity;
+  upcoming.forEach(t => { const d = daysUntil(t.startDate); if (d >= 0 && d < minDays) { minDays = d; nextTrip = t; } });
+
+  let countdownHtml = '';
+  if (nextTrip) {
+    countdownHtml = `<div class="countdown-card fade-in">
+      <div class="countdown-label">Next Adventure in</div>
+      <div class="countdown-number">${minDays}</div>
+      <div class="countdown-unit">day${minDays!==1?'s':''}</div>
+      <div class="countdown-trip">${nextTrip.name}</div>
+    </div>`;
+  }
+
+  let tripsHtml = '';
+  if (upcoming.length === 0) {
+    tripsHtml = `<div class="empty-state"><div class="empty-icon">🗺️</div><div class="empty-title">No upcoming trips</div><div class="empty-sub">Tap New Trip in the menu to plan your next adventure.</div></div>`;
+  } else {
+    upcoming.forEach((t, idx) => {
+      const c = tripColor(idx);
+      const du = daysUntil(t.startDate);
+      const badge = du > 0
+        ? `<span class="badge badge-blue">${du}d away</span>`
+        : du === 0 ? `<span class="badge badge-orange">Today!</span>`
+        : `<span class="badge badge-green">In progress</span>`;
+      tripsHtml += `
+        <div class="trip-card fade-in" data-action="open-trip" data-id="${t.id}"
+          style="--tc-main:${c.main};--tc-bg:${c.bg}">
+          <div class="trip-card-suitcase">🧳</div>
+          <div class="trip-card-content">
+            <div class="trip-card-name">${t.name}</div>
+            <div class="trip-card-dest">${t.destination}</div>
+            <div class="trip-card-row">
+              <span class="trip-card-dates">✈ ${formatDateShort(t.startDate)} – ${formatDateShort(t.endDate)}</span>
+              ${badge}
+              <span class="badge badge-gray">${t.days.length} days</span>
+              ${t.ship ? `<span class="badge badge-gray">${t.ship}</span>` : ''}
+              <button class="trip-card-edit-btn" data-action="edit-trip-card" data-id="${t.id}">${icons.edit} Edit</button>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+
+  return `
+    <div class="home-hero">
+      <div class="home-hero-inner">
+        <div class="home-hero-text">
+          <div class="home-hero-title">My Vacations</div>
+          <div class="home-hero-sub">Warren Family Travel Planner</div>
+        </div>
+        <button class="btn-icon" style="background:rgba(255,255,255,0.18)" data-action="toggle-menu">${icons.menu}</button>
+      </div>
+    </div>
+    <div class="scroll-content">
+      ${countdownHtml}
+      <div class="section-header">Upcoming Trips</div>
+      ${tripsHtml}
+      <div class="spacer"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item ${S.homeTab===0?'active':''}" data-action="home-tab" data-tab="0">
+        ${icons.home}<span>Home</span>
+      </button>
+      <button class="tab-item ${S.homeTab===1?'active':''}" data-action="home-tab" data-tab="1">
+        ${icons.archive}<span>Archive</span>
+      </button>
+    </div>`;
+}
+
+// ============================================================
+// TRIP SCREEN
+// ============================================================
+function renderTrip() {
+  const t = trip();
+  if (!t) return '<div class="empty-state"><div class="empty-title">Trip not found</div></div>';
+  const tabs = ['Itinerary','Clothes','Packing','Info'];
+  const tabsHtml = tabs.map((tb,i) =>
+    `<button class="trip-tab ${S.tripTab===i?'active':''}" data-action="trip-tab" data-tab="${i}">${tb}</button>`
+  ).join('');
+  let content = '';
+  if (S.tripTab===0) content = renderItinerary(t);
+  else if (S.tripTab===1) content = renderClothes(t);
+  else if (S.tripTab===2) content = renderPacking(t);
+  else if (S.tripTab===3) content = renderInfo(t);
+  return `
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn-icon" data-action="back" style="flex-shrink:0">${icons.back}</button>
+        <div class="header-title-group">
+          <div class="header-title">${t.name}</div>
+          <div class="header-subtitle">${formatDateShort(t.startDate)} – ${formatDateShort(t.endDate)}</div>
+        </div>
+        <button class="btn-icon" data-action="toggle-menu">${icons.menu}</button>
+      </div>
+      <div class="trip-tabs">${tabsHtml}</div>
+    </div>
+    <div class="scroll-content no-tab">${content}</div>`;
+}
+
+function renderItinerary(t) {
+  let html = '';
+  t.days.forEach(d => {
+    const actCount = d.activities.length;
+    const mealCount = [d.meals.breakfast,d.meals.lunch,d.meals.dinner].filter(m=>m.restaurant).length;
+    html += `
+      <div class="day-row" data-action="open-day" data-id="${d.id}">
+        <div class="day-dot"></div>
+        <div class="day-row-info">
+          <div class="day-row-label">${d.dayLabel}</div>
+          <div class="day-row-date">${formatDate(d.date)}</div>
+          ${d.location ? `<div class="day-row-location">${icons.map} ${d.location}</div>` : ''}
+          <div class="day-row-chips">
+            ${actCount ? `<span class="badge badge-blue">${actCount} activit${actCount===1?'y':'ies'}</span>`:''}
+            ${mealCount ? `<span class="badge badge-orange">${mealCount} meal${mealCount===1?'':'s'}</span>`:''}
+          </div>
+        </div>
+        <span class="chevron">${icons.chevron}</span>
+      </div>`;
+  });
+  if (!html) html = `<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">No days yet</div></div>`;
+  return html;
+}
+
+function renderClothes(t) {
+  const travelers = t.travelers && t.travelers.length ? t.travelers : S.data.travelers;
+  const personIdx = Math.min(S.clothesPerson, travelers.length - 1);
+  const person = travelers[personIdx];
+  const personTabsHtml = travelers.map((p,i) =>
+    `<button class="person-tab ${personIdx===i?'active':''}" data-action="clothes-person" data-idx="${i}">${p}</button>`
+  ).join('');
+  const dayChipsHtml = t.days.map((d,i) =>
+    `<div class="day-chip ${S.clothesDayIdx===i?'active':''}" data-action="clothes-day" data-idx="${i}">${d.dayLabel.split('—')[0].trim()}<br>${formatDateShort(d.date)}</div>`
+  ).join('');
+  const curDay = t.days[S.clothesDayIdx] || t.days[0];
+  const outfitVal = curDay?.clothes?.[person] || '';
+  let parsed = {}; try { parsed = JSON.parse(outfitVal); } catch(e) { parsed = { other: outfitVal }; }
+  const fields = [
+    {key:'top', label:'Top / Shirt'},
+    {key:'bottom', label:'Bottom / Pants'},
+    {key:'shoes', label:'Shoes'},
+    {key:'accessories', label:'Accessories / Jewelry'},
+    {key:'other', label:'Other / Notes'}
+  ];
+  const fieldsHtml = fields.map(f => `
+    <div class="clothes-field">
+      <div class="clothes-field-label">${f.label}</div>
+      <textarea placeholder="What are you wearing?" data-action="clothes-input"
+        data-person="${person}" data-day="${curDay?.id}" data-field="${f.key}">${parsed[f.key]||''}</textarea>
+    </div>`).join('');
+  return `
+    <div class="person-tabs">${personTabsHtml}</div>
+    <div class="clothes-day-picker-wrap">
+      <div class="clothes-day-picker">${dayChipsHtml}</div>
+    </div>
+    <div style="padding-bottom:20px">
+      ${curDay ? `<div class="section-header">${curDay.dayLabel}${curDay.location ? ' — '+curDay.location : ' — '+formatDateShort(curDay.date)}</div>` : ''}
+      ${fieldsHtml}
+      <div class="spacer"></div>
+    </div>`;
+}
+
+function renderPacking(t) {
+  const all = ['All', ...(t.travelers && t.travelers.length ? t.travelers : S.data.travelers)];
+  const filterHtml = all.map(p =>
+    `<button class="filter-chip ${S.packFilter===p?'active':''}" data-action="pack-filter" data-val="${p}">${p}</button>`
+  ).join('');
+  const items = t.packingList.filter(it => S.packFilter==='All' || it.person===S.packFilter || it.person==='All');
+  const packed = items.filter(i=>i.packed).length;
+  const pct = items.length ? Math.round(packed/items.length*100) : 0;
+  const itemsHtml = items.map(it => `
+    <div class="packing-item ${it.packed?'packed':''}" data-action="toggle-pack" data-id="${it.id}">
+      <div class="packing-check ${it.packed?'checked':''}">${it.packed?icons.check:''}</div>
+      <div class="packing-item-name">${it.item}</div>
+      <div class="packing-item-person">${it.person!=='All'?it.person:''}</div>
+      <button class="btn-icon dark" style="width:28px;height:28px;font-size:14px" data-action="delete-pack" data-id="${it.id}">✕</button>
+    </div>`).join('');
+  return `
+    <div class="packing-progress">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:700;color:var(--text)">Packing Progress</span>
+        <span style="font-size:14px;font-weight:700;color:var(--primary)">${packed}/${items.length}</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="packing-filter">${filterHtml}</div>
+    <div style="background:var(--card);border-radius:var(--radius);margin:0 16px;overflow:hidden;box-shadow:var(--shadow)">
+      ${itemsHtml || '<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">No items</div></div>'}
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="add-pack-item">${icons.plus} Add Item</button>
+      <button class="btn btn-outline" data-action="reset-pack">Reset</button>
+    </div>
+    <div class="spacer"></div>`;
+}
+
+function renderInfo(t) {
+  const df = t.departFlight || {};
+  const rf = t.returnFlight || {};
+  return `
+    <div class="card">
+      <div class="card-header"><div class="card-title">${icons.ship} Reservation Details</div></div>
+      <div class="info-row"><div class="info-label">Reservation #</div><div class="info-value">${t.reservationNumber||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Ship / Hotel</div><div class="info-value">${t.ship||'—'}</div></div>
+      ${t.reservationLink ? `<div class="info-row"><div class="info-label">Booking Link</div><div class="info-value"><a href="${t.reservationLink}" target="_blank">${icons.link} Open Reservation</a></div></div>` : ''}
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">✈️ Departure Flight</div></div>
+      <div class="info-row"><div class="info-label">Airline</div><div class="info-value">${df.airline||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Flight #</div><div class="info-value">${df.flightNumber||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Date</div><div class="info-value">${df.date?formatDate(df.date):'—'}</div></div>
+      <div class="info-row"><div class="info-label">Departure Time</div><div class="info-value">${df.time||'—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">🏠 Return Flight</div></div>
+      <div class="info-row"><div class="info-label">Airline</div><div class="info-value">${rf.airline||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Flight #</div><div class="info-value">${rf.flightNumber||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Date</div><div class="info-value">${rf.date?formatDate(rf.date):'—'}</div></div>
+      <div class="info-row"><div class="info-label">Departure Time</div><div class="info-value">${rf.time||'—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">💳 Payments</div></div>
+      <div class="info-row"><div class="info-label">Deposit Paid</div><div class="info-value">$${t.deposit?.toFixed(2)||'—'} ${t.depositDate?'on '+formatDateShort(t.depositDate):''}</div></div>
+      <div class="info-row"><div class="info-label">Final Payment</div><div class="info-value">$${t.finalPayment?.toFixed(2)||'—'}</div></div>
+      <div class="info-row"><div class="info-label">Due Date</div><div class="info-value" style="color:var(--danger)">${t.finalPaymentDue?formatDate(t.finalPaymentDue):'—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">📅 Trip Dates</div></div>
+      <div class="info-row"><div class="info-label">Departure</div><div class="info-value">${formatDate(t.startDate)}</div></div>
+      <div class="info-row"><div class="info-label">Return</div><div class="info-value">${formatDate(t.endDate)}</div></div>
+      <div class="info-row"><div class="info-label">Duration</div><div class="info-value">${t.days.length} days</div></div>
+      <div class="info-row"><div class="info-label">Destination</div><div class="info-value">${t.destination}</div></div>
+    </div>
+    ${t.notes ? `<div class="card"><div class="card-header"><div class="card-title">📝 Notes</div></div><div class="card-body"><p style="font-size:14px;color:var(--text);line-height:1.5">${t.notes}</p></div></div>` : ''}
+    <div class="btn-row">
+      <button class="btn btn-danger btn-full" data-action="archive-trip" data-id="${t.id}">Archive This Trip</button>
+    </div>
+    <div class="spacer"></div>`;
+}
+
+// ============================================================
+// DAY SCREEN
+// ============================================================
+function renderDay() {
+  const t = trip(); const d = day();
+  if (!d) return '';
+  const meals = [
+    {key:'breakfast', label:'Breakfast', emoji:'🥐', bg:'#FFF8E1'},
+    {key:'lunch',     label:'Lunch',     emoji:'🥗', bg:'#E8F5E9'},
+    {key:'dinner',    label:'Dinner',    emoji:'🍽️', bg:'#EDE7F6'}
+  ];
+  const mealsHtml = meals.map(m => {
+    const meal = d.meals[m.key];
+    return `<div class="meal-section">
+      <div class="meal-row" data-action="edit-meal" data-meal="${m.key}">
+        <div class="meal-icon" style="background:${m.bg}">${m.emoji}</div>
+        <div class="meal-info">
+          <div class="meal-label">${m.label}</div>
+          <div class="meal-restaurant">${meal.restaurant || 'Tap to add restaurant…'}</div>
+          ${meal.reservationInfo ? `<div class="meal-meta">📋 ${meal.reservationInfo}</div>` : ''}
+          ${meal.notes ? `<div class="meal-meta">${meal.notes}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          ${meal.booked ? `<span class="badge badge-green">Booked</span>` : `<span class="badge badge-gray">TBD</span>`}
+          <span class="chevron">${icons.chevron}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const activitiesHtml = d.activities.length ? d.activities.map(act => `
+    <div class="activity-item">
+      <div class="activity-icon">🎯</div>
+      <div class="activity-info">
+        <div class="activity-name">${act.name}</div>
+        ${act.time ? `<div class="activity-time">⏰ ${act.time}</div>` : ''}
+        ${act.location ? `<div class="activity-location">📍 ${act.location}</div>` : ''}
+        ${act.reservationInfo ? `<div class="activity-booking">📋 ${act.reservationInfo}</div>` : ''}
+        ${act.bookedWith ? `<div class="activity-booking">🏷️ Booked via ${act.bookedWith}</div>` : ''}
+        ${act.status ? `<span class="badge ${act.status==='Booked'?'badge-green':act.status==='Confirmed'?'badge-blue':'badge-gray'}" style="margin-top:4px;display:inline-block">${act.status}</span>` : ''}
+      </div>
+      <div class="activity-actions">
+        <button class="btn-icon dark" data-action="edit-activity" data-id="${act.id}">${icons.edit}</button>
+        <button class="btn-icon" style="background:#FEE8E6;color:var(--danger)" data-action="delete-activity" data-id="${act.id}">${icons.trash}</button>
+      </div>
+    </div>`).join('') :
+    `<div class="empty-state" style="padding:28px"><div class="empty-icon">🎯</div><div class="empty-sub">No activities yet</div></div>`;
+  return `
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn-icon" data-action="back">${icons.back}</button>
+        <div class="header-title-group">
+          <div class="header-title">${d.dayLabel}</div>
+          <div class="header-subtitle">${formatDate(d.date)}${d.location ? ' · ' + d.location : ''}</div>
+        </div>
+        <button class="btn-icon" data-action="edit-day" title="Edit Day">${icons.edit}</button>
+        <button class="btn-icon" data-action="toggle-menu">${icons.menu}</button>
+      </div>
+    </div>
+    <div class="scroll-content no-tab">
+      <div class="section-header">Meals</div>
+      <div style="background:var(--card);border-radius:var(--radius);margin:0 16px;overflow:hidden;box-shadow:var(--shadow)">${mealsHtml}</div>
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px">
+        <span>Activities</span>
+        <button class="btn btn-sm btn-primary" data-action="add-activity">${icons.plus} Add</button>
+      </div>
+      <div style="background:var(--card);border-radius:var(--radius);margin:0 16px;overflow:hidden;box-shadow:var(--shadow)">${activitiesHtml}</div>
+      <div class="section-header">Today's Outfits</div>
+      <div class="card" style="overflow:visible">
+        <div class="card-body" style="padding-top:12px">
+          ${(t.travelers && t.travelers.length ? t.travelers : S.data.travelers).map(person => {
+            const clothes = d.clothes[person] || '';
+            let parsed = {}; try { parsed = JSON.parse(clothes); } catch(e) { parsed = { other: clothes }; }
+            const summary = [parsed.top, parsed.bottom, parsed.shoes].filter(Boolean).join(' · ') || parsed.other || 'Not set';
+            return `<div style="margin-bottom:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">${person}</div>
+              <div style="font-size:13px;color:var(--text)">${summary}</div>
+            </div>`;
+          }).join('')}
+          <button class="btn btn-outline btn-full btn-sm" data-action="goto-clothes">Edit Outfits ${icons.chevron}</button>
+        </div>
+      </div>
+      ${d.notes ? `<div class="card"><div class="card-header"><div class="card-title">📝 Notes</div></div><div class="card-body"><p style="font-size:14px;color:var(--text);line-height:1.5">${d.notes}</p></div></div>` : ''}
+      <div class="spacer"></div>
+    </div>`;
+}
+
+// ============================================================
+// ARCHIVE SCREEN
+// ============================================================
+function renderArchive() {
+  const archived = [...S.data.archive].sort((a,b) => b.year - a.year);
+  const archivedTrips = S.data.trips.filter(t => t.status === 'archived');
+  let rows = '';
+  archivedTrips.forEach((t,idx) => {
+    const c = tripColor(idx);
+    rows += `<div class="archive-item" data-action="open-trip" data-id="${t.id}">
+      <div class="archive-year-badge" style="background:${c.main}">${t.startDate.slice(0,4)}</div>
+      <div class="archive-dest">${t.name}<br><small style="color:var(--text-muted)">${t.destination}</small></div>
+      <span class="chevron">${icons.chevron}</span>
+    </div>`;
+  });
+  archived.forEach(a => {
+    rows += `<div class="archive-item" data-action="edit-archive" data-id="${a.id}">
+      <div class="archive-year-badge">${a.year}</div>
+      <div class="archive-dest">${a.destination}</div>
+      <button class="btn-icon" style="background:#FEE8E6;color:var(--danger)" data-action="delete-archive" data-id="${a.id}">${icons.trash}</button>
+    </div>`;
+  });
+  if (!rows) rows = `<div class="empty-state"><div class="empty-icon">🗂️</div><div class="empty-title">No archived trips</div></div>`;
+  return `
+    <div class="header">
+      <div class="header-inner">
+        <div class="header-title-group">
+          <div class="header-title">Trip Archive</div>
+          <div class="header-subtitle">Warren Family Travel History</div>
+        </div>
+        <button class="btn-icon" data-action="add-archive">${icons.plus}</button>
+        <button class="btn-icon" data-action="toggle-menu">${icons.menu}</button>
+      </div>
+    </div>
+    <div class="scroll-content no-tab">
+      <div class="section-header">Travel History</div>
+      <div style="background:var(--card);border-radius:var(--radius);margin:0 16px;overflow:hidden;box-shadow:var(--shadow)">${rows}</div>
+      <div class="spacer"></div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item" data-action="home-tab" data-tab="0">${icons.home}<span>Home</span></button>
+      <button class="tab-item active" data-action="home-tab" data-tab="1">${icons.archive}<span>Archive</span></button>
+    </div>`;
+}
+
+// ============================================================
+// NEW / EDIT TRIP SCREEN
+// ============================================================
+function renderNewTrip() {
+  const editing = S.screen === 'edit-trip';
+  const t = editing ? trip() : null;
+  const df = t?.departFlight || {};
+  const rf = t?.returnFlight || {};
+  const travelersVal = (editing ? (t?.travelers || S.data.travelers) : S.data.travelers).join('\n');
+  return `
+    <div class="header">
+      <div class="header-inner">
+        <button class="btn-icon" data-action="back">${icons.back}</button>
+        <div class="header-title">${editing ? 'Edit Trip' : 'New Trip'}</div>
+        <button class="btn" style="background:var(--accent);color:#fff;padding:8px 16px;font-size:14px;border-radius:10px" data-action="save-trip">Save</button>
+      </div>
+    </div>
+    <div class="scroll-content no-tab">
+      <div class="form-group"><label class="form-label">Trip Name</label>
+        <input class="form-input" id="ft-name" type="text" placeholder="e.g. European Adventure" value="${t?.name||''}"></div>
+      <div class="form-group"><label class="form-label">Destination(s)</label>
+        <input class="form-input" id="ft-dest" type="text" placeholder="Countries, cities, ports…" value="${t?.destination||''}"></div>
+      <div class="form-group"><label class="form-label">Start Date</label>
+        <input class="form-input" id="ft-start" type="date" value="${t?.startDate||''}"></div>
+      <div class="form-group"><label class="form-label">End Date</label>
+        <input class="form-input" id="ft-end" type="date" value="${t?.endDate||''}"></div>
+      <div class="form-group"><label class="form-label">Ship / Hotel</label>
+        <input class="form-input" id="ft-ship" type="text" placeholder="Royal Caribbean, Marriott…" value="${t?.ship||''}"></div>
+      <div class="form-group"><label class="form-label">Reservation Number</label>
+        <input class="form-input" id="ft-resnum" type="text" placeholder="Confirmation #" value="${t?.reservationNumber||''}"></div>
+      <div class="form-group"><label class="form-label">Reservation Link</label>
+        <input class="form-input" id="ft-reslink" type="url" placeholder="https://…" value="${t?.reservationLink||''}"></div>
+      <div class="form-section-label">✈️ Departure Flight</div>
+      <div class="form-group"><label class="form-label">Airline</label>
+        <input class="form-input" id="ft-d-airline" type="text" placeholder="United, Delta, American…" value="${df.airline||''}"></div>
+      <div class="form-group"><label class="form-label">Flight Number</label>
+        <input class="form-input" id="ft-d-fnum" type="text" placeholder="e.g. UA2021" value="${df.flightNumber||''}"></div>
+      <div class="form-group">
+        <div class="form-row">
+          <div style="flex:1"><label class="form-label">Departure Date</label>
+            <input class="form-input" id="ft-d-date" type="date" value="${df.date||''}"></div>
+          <div style="flex:1"><label class="form-label">Departure Time</label>
+            <input class="form-input" id="ft-d-time" type="time" value="${df.time ? df.time.replace(/( AM| PM)/i,'') : ''}"></div>
+        </div>
+      </div>
+      <div class="form-section-label">🏠 Return Flight</div>
+      <div class="form-group"><label class="form-label">Airline</label>
+        <input class="form-input" id="ft-r-airline" type="text" placeholder="United, Delta, American…" value="${rf.airline||''}"></div>
+      <div class="form-group"><label class="form-label">Flight Number</label>
+        <input class="form-input" id="ft-r-fnum" type="text" placeholder="e.g. UA2022" value="${rf.flightNumber||''}"></div>
+      <div class="form-group">
+        <div class="form-row">
+          <div style="flex:1"><label class="form-label">Return Date</label>
+            <input class="form-input" id="ft-r-date" type="date" value="${rf.date||''}"></div>
+          <div style="flex:1"><label class="form-label">Return Time</label>
+            <input class="form-input" id="ft-r-time" type="time" value="${rf.time ? rf.time.replace(/( AM| PM)/i,'') : ''}"></div>
+        </div>
+      </div>
+      <div class="form-section-label">💳 Payments</div>
+      <div class="form-group">
+        <div class="form-row">
+          <div style="flex:1"><label class="form-label">Deposit Amount</label>
+            <input class="form-input" id="ft-deposit" type="number" placeholder="0.00" value="${t?.deposit||''}"></div>
+          <div style="flex:1"><label class="form-label">Deposit Date</label>
+            <input class="form-input" id="ft-depdate" type="date" value="${t?.depositDate||''}"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-row">
+          <div style="flex:1"><label class="form-label">Final Payment</label>
+            <input class="form-input" id="ft-final" type="number" placeholder="0.00" value="${t?.finalPayment||''}"></div>
+          <div style="flex:1"><label class="form-label">Due Date</label>
+            <input class="form-input" id="ft-finaldue" type="date" value="${t?.finalPaymentDue||''}"></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="ft-notes" placeholder="Any notes about this trip…">${t?.notes||''}</textarea></div>
+      <div class="form-section-label">👥 Who's Going?</div>
+      <div class="form-group"><label class="form-label">Travelers (one per line)</label>
+        <textarea class="form-textarea" id="ft-travelers" placeholder="Michael&#10;Tina&#10;Ryan" style="min-height:90px">${travelersVal}</textarea></div>
+      ${editing ? '' : `<div style="padding:12px 16px;font-size:13px;color:var(--text-muted)">📅 Daily itinerary will be auto-generated from your dates.</div>`}
+      <div class="spacer"></div>
+    </div>`;
+}
+function renderEditTrip() { return renderNewTrip(); }
+
+// ============================================================
+// MODALS
+// ============================================================
+function renderModals() {
+  return `
+    <div id="modal-meal" class="modal-overlay"><div class="modal-sheet"><div class="modal-handle"></div><div id="modal-meal-body"></div></div></div>
+    <div id="modal-activity" class="modal-overlay"><div class="modal-sheet"><div class="modal-handle"></div><div id="modal-activity-body"></div></div></div>
+    <div id="modal-day" class="modal-overlay"><div class="modal-sheet"><div class="modal-handle"></div><div id="modal-day-body"></div></div></div>
+    <div id="modal-pack-item" class="modal-overlay"><div class="modal-sheet"><div class="modal-handle"></div><div id="modal-pack-item-body"></div></div></div>
+    <div id="modal-archive-item" class="modal-overlay"><div class="modal-sheet"><div class="modal-handle"></div><div id="modal-archive-item-body"></div></div></div>`;
+}
+
+function renderModal(name) {
+  if (name==='meal') renderMealModal();
+  else if (name==='activity') renderActivityModal();
+  else if (name==='day') renderDayModal();
+  else if (name==='pack-item') renderPackItemModal();
+  else if (name==='archive-item') renderArchiveItemModal();
+}
+
+function renderMealModal() {
+  const d = day(); const mealKey = S.modalData.meal; const meal = d?.meals[mealKey] || {};
+  const labels = { breakfast:'🥐 Breakfast', lunch:'🥗 Lunch', dinner:'🍽️ Dinner' };
+  document.getElementById('modal-meal-body').innerHTML = `
+    <div class="modal-header"><div class="modal-title">${labels[mealKey]}</div>
+      <button class="btn-icon dark" data-action="close-modal">${icons.close}</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Restaurant / Location</label>
+        <input class="form-input" id="m-restaurant" type="text" placeholder="Restaurant name" value="${meal.restaurant||''}"></div>
+      <div class="form-group"><label class="form-label">Reservation Info</label>
+        <input class="form-input" id="m-resinfo" type="text" placeholder="Confirmation #, link, time…" value="${meal.reservationInfo||''}"></div>
+      <div class="form-group"><label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="m-notes" placeholder="Any notes…">${meal.notes||''}</textarea></div>
+      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between">
+        <label class="form-label" style="margin:0">Reservation Booked</label>
+        <div class="toggle ${meal.booked?'on':''}" id="m-booked" data-action="toggle-booked"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="save-meal">Save</button>
+      <button class="btn btn-ghost" data-action="close-modal">Cancel</button>
+    </div>`;
+}
+
+function renderActivityModal() {
+  const d = day(); const actId = S.modalData.actId;
+  const act = actId ? d?.activities.find(a => a.id===actId) : null;
+  document.getElementById('modal-activity-body').innerHTML = `
+    <div class="modal-header"><div class="modal-title">${act ? 'Edit Activity' : 'New Activity'}</div>
+      <button class="btn-icon dark" data-action="close-modal">${icons.close}</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Activity Name</label>
+        <input class="form-input" id="a-name" type="text" placeholder="Tour, excursion, attraction…" value="${act?.name||''}"></div>
+      <div class="form-group"><label class="form-label">Time</label>
+        <input class="form-input" id="a-time" type="text" placeholder="e.g. 10:00 am (2 hours)" value="${act?.time||''}"></div>
+      <div class="form-group"><label class="form-label">Location</label>
+        <input class="form-input" id="a-location" type="text" placeholder="Address or place name" value="${act?.location||''}"></div>
+      <div class="form-group"><label class="form-label">Reservation / Confirmation #</label>
+        <input class="form-input" id="a-resinfo" type="text" placeholder="Conf #, booking code…" value="${act?.reservationInfo||''}"></div>
+      <div class="form-group"><label class="form-label">Booked With / Platform</label>
+        <input class="form-input" id="a-bookedwith" type="text" placeholder="Viator, direct, etc." value="${act?.bookedWith||''}"></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="a-status">
+          ${['Booked','Confirmed','TBD','Waitlist','Cancelled'].map(s=>`<option ${(act?.status||'TBD')===s?'selected':''}>${s}</option>`).join('')}
+        </select></div>
+      <div class="form-group"><label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="a-notes" placeholder="Any notes…">${act?.notes||''}</textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="save-activity">Save</button>
+      <button class="btn btn-ghost" data-action="close-modal">Cancel</button>
+    </div>`;
+}
+
+function renderDayModal() {
+  const d = day();
+  document.getElementById('modal-day-body').innerHTML = `
+    <div class="modal-header"><div class="modal-title">Edit Day</div>
+      <button class="btn-icon dark" data-action="close-modal">${icons.close}</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Day Label</label>
+        <input class="form-input" id="dd-label" type="text" placeholder="e.g. Day 1 — At Sea" value="${d?.dayLabel||''}"></div>
+      <div class="form-group"><label class="form-label">Location</label>
+        <input class="form-input" id="dd-location" type="text" placeholder="City, port, country…" value="${d?.location||''}"></div>
+      <div class="form-group"><label class="form-label">Day Notes</label>
+        <textarea class="form-textarea" id="dd-notes" placeholder="Any notes for this day…">${d?.notes||''}</textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="save-day">Save</button>
+      <button class="btn btn-ghost" data-action="close-modal">Cancel</button>
+    </div>`;
+}
+
+function renderPackItemModal() {
+  const travelers = ['All', ...S.data.travelers];
+  document.getElementById('modal-pack-item-body').innerHTML = `
+    <div class="modal-header"><div class="modal-title">Add Packing Item</div>
+      <button class="btn-icon dark" data-action="close-modal">${icons.close}</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Item</label>
+        <input class="form-input" id="pk-item" type="text" placeholder="What do you need to pack?"></div>
+      <div class="form-group"><label class="form-label">Who</label>
+        <select class="form-select" id="pk-person">${travelers.map(p=>`<option>${p}</option>`).join('')}</select></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="save-pack-item">Add</button>
+      <button class="btn btn-ghost" data-action="close-modal">Cancel</button>
+    </div>`;
+}
+
+function renderArchiveItemModal() {
+  const item = S.modalData.item || {};
+  document.getElementById('modal-archive-item-body').innerHTML = `
+    <div class="modal-header"><div class="modal-title">${item.id ? 'Edit Archive Entry' : 'Add to Archive'}</div>
+      <button class="btn-icon dark" data-action="close-modal">${icons.close}</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Year</label>
+        <input class="form-input" id="ar-year" type="number" placeholder="2024" value="${item.year||new Date().getFullYear()}"></div>
+      <div class="form-group"><label class="form-label">Destination</label>
+        <input class="form-input" id="ar-dest" type="text" placeholder="Countries, cities…" value="${item.destination||''}"></div>
+      <div class="form-group"><label class="form-label">Notes / Memories</label>
+        <textarea class="form-textarea" id="ar-notes" placeholder="Highlights, memories…">${item.notes||''}</textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" data-action="save-archive-item">Save</button>
+      <button class="btn btn-ghost" data-action="close-modal">Cancel</button>
+    </div>`;
+}
+
+// ============================================================
+// EVENT HANDLER
+// ============================================================
+function attachEvents() {
+  document.querySelectorAll('[data-action]').forEach(el => {
+    el.addEventListener('click', handleAction, { passive: true });
+  });
+  document.querySelectorAll('[data-action="clothes-input"]').forEach(el => {
+    el.addEventListener('input', handleClothesInput);
+  });
+}
+
+function handleClothesInput(e) {
+  const el = e.target;
+  const person = el.dataset.person; const dayId = el.dataset.day; const field = el.dataset.field;
+  const t = trip(); if (!t) return;
+  const d = t.days.find(d => d.id===dayId); if (!d) return;
+  if (!d.clothes[person]) d.clothes[person] = '{}';
+  let parsed = {}; try { parsed = JSON.parse(d.clothes[person]); } catch(e) { parsed = { other: d.clothes[person] }; }
+  parsed[field] = el.value;
+  d.clothes[person] = JSON.stringify(parsed);
+  save();
+}
+
+function handleAction(e) {
+  const el = e.currentTarget; const action = el.dataset.action;
+  switch(action) {
+    case 'back': back(); break;
+    case 'toggle-menu': S.menuOpen = !S.menuOpen; render(); break;
+    case 'close-menu': S.menuOpen = false; render(); break;
+    case 'menu-dashboard': S.menuOpen = false; S.screen = 'home'; S.stack = []; render(); break;
+    case 'menu-edit': S.menuOpen = false; navigate('edit-trip'); break;
+    case 'menu-save': save(); S.menuOpen = false; render(); toast('✓ Saved'); break;
+    case 'menu-new-trip': S.menuOpen = false; navigate('new-trip'); break;
+    case 'menu-export': S.menuOpen = false; render(); exportData(); break;
+    case 'menu-import': S.menuOpen = false; render(); importData(); break;
+    case 'home-tab': {
+      const tab = parseInt(el.dataset.tab);
+      S.menuOpen = false;
+      if (tab===0) { S.homeTab=0; S.screen='home'; S.stack=[]; render(); }
+      else { S.homeTab=1; S.screen='archive'; S.stack=[]; render(); }
+      break;
+    }
+    case 'edit-trip-card': e.stopPropagation(); S.tripId=el.dataset.id; navigate('edit-trip'); break;
+    case 'open-trip': e.stopPropagation(); S.tripId=el.dataset.id; navigate('trip', {tripTab:0}); break;
+    case 'edit-trip': navigate('edit-trip'); break;
+    case 'trip-tab': S.tripTab=parseInt(el.dataset.tab); render(); break;
+    case 'open-day': S.dayId=el.dataset.id; navigate('day'); break;
+    case 'edit-day': openModal('day'); break;
+    case 'edit-meal': openModal('meal', {meal:el.dataset.meal}); break;
+    case 'add-activity': openModal('activity', {actId:null}); break;
+    case 'edit-activity': e.stopPropagation(); openModal('activity', {actId:el.dataset.id}); break;
+    case 'delete-activity': {
+      e.stopPropagation(); const d=day(); if (!d) break;
+      d.activities=d.activities.filter(a=>a.id!==el.dataset.id); save(); render(); break;
+    }
+    case 'goto-clothes': {
+      const t=trip(); if (!t) break;
+      const dayIdx=t.days.findIndex(d=>d.id===S.dayId);
+      navigate('trip', {tripTab:1, clothesDayIdx:Math.max(0,dayIdx)}); break;
+    }
+    case 'clothes-person': S.clothesPerson=parseInt(el.dataset.idx); render(); break;
+    case 'clothes-day': S.clothesDayIdx=parseInt(el.dataset.idx); render(); break;
+    case 'pack-filter': S.packFilter=el.dataset.val; render(); break;
+    case 'toggle-pack': {
+      const t=trip(); if (!t) break;
+      const it=t.packingList.find(p=>p.id===el.dataset.id);
+      if (it) { it.packed=!it.packed; save(); render(); } break;
+    }
+    case 'delete-pack': {
+      e.stopPropagation(); const t=trip(); if (!t) break;
+      t.packingList=t.packingList.filter(p=>p.id!==el.dataset.id); save(); render(); break;
+    }
+    case 'reset-pack': {
+      const t=trip(); if (!t) break;
+      t.packingList.forEach(p=>p.packed=false); save(); render(); toast('Packing list reset'); break;
+    }
+    case 'add-pack-item': openModal('pack-item'); break;
+    case 'add-archive': openModal('archive-item', {item:{}}); break;
+    case 'edit-archive': {
+      const item=S.data.archive.find(a=>a.id===el.dataset.id);
+      openModal('archive-item', {item:item||{}}); break;
+    }
+    case 'delete-archive': {
+      e.stopPropagation(); S.data.archive=S.data.archive.filter(a=>a.id!==el.dataset.id);
+      save(); render(); toast('Removed'); break;
+    }
+    case 'archive-trip': {
+      const t=trip(); if (!t) break;
+      t.status='archived'; save(); S.screen='home'; S.stack=[]; render(); toast('Trip archived'); break;
+    }
+    case 'toggle-booked': document.getElementById('m-booked')?.classList.toggle('on'); break;
+    case 'close-modal': closeModal(); break;
+    case 'save-trip': saveTripForm(); break;
+    case 'save-meal': saveMeal(); break;
+    case 'save-activity': saveActivity(); break;
+    case 'save-day': saveDay(); break;
+    case 'save-pack-item': savePackItem(); break;
+    case 'save-archive-item': saveArchiveItem(); break;
+  }
+}
+
+// ============================================================
+// SAVE FUNCTIONS
+// ============================================================
+function readFlightTime(id) {
+  const raw = document.getElementById(id)?.value || '';
+  if (!raw) return '';
+  const [hh, mm] = raw.split(':');
+  const h = parseInt(hh); const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h===0?12:h>12?h-12:h}:${mm} ${ampm}`;
+}
+
+function saveTripForm() {
+  const name = document.getElementById('ft-name')?.value.trim();
+  const dest = document.getElementById('ft-dest')?.value.trim();
+  const start = document.getElementById('ft-start')?.value;
+  const end = document.getElementById('ft-end')?.value;
+  if (!name||!start||!end) { toast('Please fill in name and dates'); return; }
+  if (end<start) { toast('End date must be after start date'); return; }
+  const departFlight = {
+    date: document.getElementById('ft-d-date')?.value || '',
+    time: readFlightTime('ft-d-time'),
+    airline: document.getElementById('ft-d-airline')?.value.trim() || '',
+    flightNumber: document.getElementById('ft-d-fnum')?.value.trim() || ''
+  };
+  const returnFlight = {
+    date: document.getElementById('ft-r-date')?.value || '',
+    time: readFlightTime('ft-r-time'),
+    airline: document.getElementById('ft-r-airline')?.value.trim() || '',
+    flightNumber: document.getElementById('ft-r-fnum')?.value.trim() || ''
+  };
+  const travelersRaw = document.getElementById('ft-travelers')?.value || '';
+  const travelers = travelersRaw.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!travelers.length) travelers.push(...S.data.travelers);
+  const editing = S.screen === 'edit-trip';
+  if (editing) {
+    const t = trip(); if (!t) return;
+    const oldStart = t.startDate; const oldEnd = t.endDate;
+    t.name=name; t.destination=dest; t.startDate=start; t.endDate=end;
+    t.travelers=travelers;
+    t.ship=document.getElementById('ft-ship')?.value.trim()||'';
+    t.reservationNumber=document.getElementById('ft-resnum')?.value.trim()||'';
+    t.reservationLink=document.getElementById('ft-reslink')?.value.trim()||'';
+    t.deposit=parseFloat(document.getElementById('ft-deposit')?.value)||0;
+    t.depositDate=document.getElementById('ft-depdate')?.value||'';
+    t.finalPayment=parseFloat(document.getElementById('ft-final')?.value)||0;
+    t.finalPaymentDue=document.getElementById('ft-finaldue')?.value||'';
+    t.notes=document.getElementById('ft-notes')?.value.trim()||'';
+    t.departFlight=departFlight; t.returnFlight=returnFlight;
+    if (oldStart!==start||oldEnd!==end) {
+      const newDays=genDays(start,end,travelers);
+      newDays.forEach(nd=>{ const ex=t.days.find(d=>d.date===nd.date); if(ex) Object.assign(nd,ex,{date:nd.date,id:nd.id}); });
+      t.days=newDays;
+    }
+    save(); back(); toast('Trip updated');
+  } else {
+    const days=genDays(start,end,travelers);
+    const t = {
+      id:'trip-'+genId(), name, destination:dest, startDate:start, endDate:end, status:'upcoming',
+      travelers,
+      ship:document.getElementById('ft-ship')?.value.trim()||'',
+      reservationNumber:document.getElementById('ft-resnum')?.value.trim()||'',
+      reservationLink:document.getElementById('ft-reslink')?.value.trim()||'',
+      deposit:parseFloat(document.getElementById('ft-deposit')?.value)||0,
+      depositDate:document.getElementById('ft-depdate')?.value||'',
+      finalPayment:parseFloat(document.getElementById('ft-final')?.value)||0,
+      finalPaymentDue:document.getElementById('ft-finaldue')?.value||'',
+      notes:document.getElementById('ft-notes')?.value.trim()||'',
+      departFlight, returnFlight, days,
+      packingList:buildDefaultData().trips[0].packingList
+        .filter(p => p.person==='All' || travelers.includes(p.person))
+        .map(p=>({...p,id:genId(),packed:false}))
+    };
+    S.data.trips.push(t); save();
+    S.screen='home'; S.stack=[]; render(); toast('Trip created! 🎉');
+  }
+}
+
+function saveMeal() {
+  const d=day(); const mealKey=S.modalData.meal; if (!d||!mealKey) return;
+  d.meals[mealKey]={
+    restaurant:document.getElementById('m-restaurant')?.value.trim()||'',
+    reservationInfo:document.getElementById('m-resinfo')?.value.trim()||'',
+    notes:document.getElementById('m-notes')?.value.trim()||'',
+    booked:document.getElementById('m-booked')?.classList.contains('on')||false
+  };
+  save(); closeModal(); toast('Meal saved');
+}
+
+function saveActivity() {
+  const d=day(); if (!d) return; const actId=S.modalData.actId;
+  const data={
+    name:document.getElementById('a-name')?.value.trim()||'',
+    time:document.getElementById('a-time')?.value.trim()||'',
+    location:document.getElementById('a-location')?.value.trim()||'',
+    reservationInfo:document.getElementById('a-resinfo')?.value.trim()||'',
+    bookedWith:document.getElementById('a-bookedwith')?.value.trim()||'',
+    status:document.getElementById('a-status')?.value||'TBD',
+    notes:document.getElementById('a-notes')?.value.trim()||''
+  };
+  if (!data.name) { toast('Please enter an activity name'); return; }
+  if (actId) { const act=d.activities.find(a=>a.id===actId); if(act) Object.assign(act,data); }
+  else d.activities.push({id:genId(),...data});
+  save();
+  const actModalEl = document.getElementById('modal-activity');
+  if (actModalEl) actModalEl.classList.remove('open');
+  S.modal = null; S.modalData = {};
+  S.screen = 'day';
+  render(); toast('Activity saved');
+}
+
+function saveDay() {
+  const d=day(); if (!d) return;
+  d.dayLabel=document.getElementById('dd-label')?.value.trim()||d.dayLabel;
+  d.location=document.getElementById('dd-location')?.value.trim()||'';
+  d.notes=document.getElementById('dd-notes')?.value.trim()||'';
+  save(); closeModal(); toast('Day updated');
+}
+
+function savePackItem() {
+  const t=trip(); if (!t) return;
+  const item=document.getElementById('pk-item')?.value.trim();
+  const person=document.getElementById('pk-person')?.value||'All';
+  if (!item) { toast('Please enter an item'); return; }
+  t.packingList.push({id:genId(),item,person,packed:false});
+  save(); closeModal(); toast('Item added');
+}
+
+function saveArchiveItem() {
+  const year=parseInt(document.getElementById('ar-year')?.value);
+  const dest=document.getElementById('ar-dest')?.value.trim();
+  const notes=document.getElementById('ar-notes')?.value.trim();
+  if (!year||!dest) { toast('Please enter year and destination'); return; }
+  const editId=S.modalData.item?.id;
+  if (editId) {
+    const item=S.data.archive.find(a=>a.id===editId);
+    if(item){item.year=year;item.destination=dest;item.notes=notes;}
+  } else {
+    S.data.archive.push({id:genId(),year,destination:dest,notes:notes||''});
+  }
+  save(); closeModal(); toast('Archive updated');
+}
+
+// ============================================================
+// EXPORT / IMPORT
+// ============================================================
+function exportData() {
+  const json = JSON.stringify(S.data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vacations-backup.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Data exported! ✓');
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json,application/json'; input.style.display = 'none';
+  document.body.appendChild(input);
+  input.onchange = function(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.trips && data.travelers) {
+          S.data = data; save(); S.screen = 'home'; S.stack = []; render(); toast('Data imported! ✓');
+        } else { toast('Invalid backup file'); }
+      } catch(err) { toast('Could not read file'); }
+    };
+    reader.readAsText(file);
+    document.body.removeChild(input);
+  };
+  input.click();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+S.data = load();
+render();
+</script>
+</body>
+</html>
